@@ -1,54 +1,63 @@
 pipeline {
+    agent any
 
-        environment {
-        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+    environment {
+        AWS_DEFAULT_REGION    = 'ap-south-1' // Set AWS region to Mumbai (ap-south-1)
     }
 
-   agent  any
     stages {
-        stage('checkout') {
+        stage('Checkout') {
             steps {
-                 script{
-                        dir("terraform")
-                        {
-                            git branch: 'main', url: 'https://github.com/aishwarya-9patil/nikterra-jenkin.git'
-                        }
+                // Clone the repository containing the Terraform files
+                checkout scm
+            }
+        }
+        stage('Set AWS Credentials') {
+            steps {
+                script {
+                    // Load AWS credentials from Jenkins credentials store
+                    withCredentials([aws(credentialsId: 'your-aws-credentials-id')]) {
+                        // Set environment variables for AWS access key and secret key
+                        env.AWS_ACCESS_KEY_ID     = AWS_ACCESS_KEY_ID
+                        env.AWS_SECRET_ACCESS_KEY = AWS_SECRET_ACCESS_KEY
                     }
                 }
             }
-
-        stage('Plan') {
+        }
+        stage('Terraform Init') {
             steps {
-                sh 'pwd;cd terraform/ ; terraform init'
-                sh "pwd;cd terraform/ ; terraform plan -out tfplan"
-                sh 'pwd;cd terraform/ ; terraform show -no-color tfplan > tfplan.txt'
+                script {
+                    sh 'terraform init' // Initialize Terraform
+                }
             }
         }
-        stage('Approval') {
-           when {
-               not {
-                   equals expected: true, actual: params.autoApprove
-               }
-           }
-
-           steps {
-               script {
-                    def plan = readFile 'terraform/tfplan.txt'
-                    input message: "Do you want to apply the plan?",
-                    parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
-               }
-           }
-       }
-
-        stage('Apply') {
+        stage('Terraform Plan') {
             steps {
-                sh "pwd;cd terraform/ ; terraform apply -input=false tfplan"
+                script {
+                    sh 'terraform plan -out=terraform.plan' // Generate Terraform plan
+                }
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                script {
+                    sh 'terraform apply -auto-approve terraform.plan' // Apply Terraform plan
+                }
+            }
+        }
+        stage('Output') {
+            steps {
+                script {
+                    // Print output from Terraform
+                    sh 'terraform output'
+                }
             }
         }
     }
-
-  }
-           
-          
-
+    post {
+        always {
+            // Clean up or destroy any resources if needed
+            echo 'Pipeline completed.'
+        }
+    }
+}
