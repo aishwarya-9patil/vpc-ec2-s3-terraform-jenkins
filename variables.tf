@@ -1,9 +1,9 @@
-# provider.tf
+# variables.tf
 
-# AWS Provider Configuration
-provider "aws" {
-  region = "ap-south-1"  # You can set this to your desired AWS region
+# Define any variables that you need for your configuration
+variable "aws_region" {
+  description = "The AWS region to deploy the resources"
+  type        = string
+  default     = "ap-south-1"
 }
 
-# Random Provider Configuration
-provider "random" {}
