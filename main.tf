@@ -1,10 +1,3 @@
-# main.tf
-
-# Provider Configuration
-provider "aws" {
-  region = "ap-south-1"  # Use the region you want or configure a variable
-}
-
 # Generate a random string to create a unique name for the S3 bucket
 resource "random_id" "bucket_suffix" {
   byte_length = 8
@@ -31,7 +24,7 @@ resource "aws_instance" "example_ec2" {
   }
 
   # Add key_name if you want to SSH into the EC2 instance
-  # key_name = "aish-key" 
+  # key_name = "aish-key"
 }
 
 # Enable versioning on the S3 bucket
