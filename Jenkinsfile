@@ -1,44 +1,42 @@
 pipeline {
-    agent any
-    environment {
-        // Make sure the credentials ID matches the one you stored in Jenkins
-        AWS_CREDENTIALS_ID = 'aws-jenkins-creds'
-    }
+    agent any  // This specifies the label for the node (use 'any' to allow the pipeline to run on any available agent)
+    
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                // Checkout your repository
-                checkout scm
+                // Checkout code from Git repository
+                git 'https://github.com/aishwarya-9patil/vpc-ec2-s3-terraform-jenkins.git'
             }
         }
         
-        stage('Run Terraform') {
+        stage('Setup') {
             steps {
-                node {
-                    // Ensure AWS credentials are available for Terraform
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
-                        credentialsId: AWS_CREDENTIALS_ID
-                    ]]) {
-                        // Here you can run your Terraform commands to setup EC2, S3, VPC
-                        sh '''
-                            # Terraform initialization and apply
-                            terraform init
-                            terraform apply -auto-approve
-                        '''
-                    }
+                script {
+                    // Add any setup logic for your environment here, for example installing dependencies
+                    echo 'Setting up the environment'
                 }
             }
         }
+
+        stage('Deploy EC2 and S3') {
+            steps {
+                script {
+                    // Add your deployment steps for EC2 and S3 here
+                    echo 'Deploying EC2 and S3'
+                }
+            }
+        }
+        
+        stage('Clean Up') {
+            steps {
+                cleanWs()  // Cleans the workspace
+            }
+        }
     }
+
     post {
         always {
-            // Clean up workspace after pipeline runs, wrapped in a node block
-            node {
-                cleanWs()
-            }
+            echo 'Pipeline finished.'
         }
     }
 }
