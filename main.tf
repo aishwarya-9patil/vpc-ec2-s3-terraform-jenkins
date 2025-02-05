@@ -1,5 +1,8 @@
+# main.tf
+
+# Provider Configuration
 provider "aws" {
-  region = "ap-south-1"  # Adjust to your preferred AWS region
+  region = "ap-south-1"  # Use the region you want or configure a variable
 }
 
 # Generate a random string to create a unique name for the S3 bucket
