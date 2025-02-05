@@ -1,67 +1,54 @@
 pipeline {
-    agent any
 
-    environment {
-        AWS_ACCESS_KEY_ID     = 'your-access-key-id'  // Set your AWS Access Key ID
-        AWS_SECRET_ACCESS_KEY = 'your-secret-access-key'  // Set your AWS Secret Access Key
-        AWS_DEFAULT_REGION    = 'ap-south-1'  // AWS Region: Mumbai (ap-south-1)
+        environment {
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     }
 
+   agent  any
     stages {
-        stage('Checkout SCM') {
+        stage('checkout') {
             steps {
-                // Clone your Git repository with the Terraform configuration
-                git branch: 'main', url: 'https://github.com/aishwarya-9patil/vpc-ec2-s3-terraform-jenkins.git'
-            }
-        }
-
-        stage('Terraform Init') {
-            steps {
-                script {
-                    // Initialize Terraform
-                    sh 'terraform init'  
+                 script{
+                        dir("terraform")
+                        {
+                            git branch: 'main', url: 'https://github.com/aishwarya-9patil/nikterra-jenkin.git'
+                        }
+                    }
                 }
             }
-        }
 
-        stage('Terraform Plan') {
+        stage('Plan') {
             steps {
-                script {
-                    // Run terraform plan to check what resources will be created
-                    sh 'terraform plan'
-                }
+                sh 'pwd;cd terraform/ ; terraform init'
+                sh "pwd;cd terraform/ ; terraform plan -out tfplan"
+                sh 'pwd;cd terraform/ ; terraform show -no-color tfplan > tfplan.txt'
             }
         }
+        stage('Approval') {
+           when {
+               not {
+                   equals expected: true, actual: params.autoApprove
+               }
+           }
 
-        stage('Terraform Apply') {
-            steps {
-                script {
-                    // Apply the Terraform configuration to create EC2 and S3
-                    sh 'terraform apply -auto-approve'
-                }
-            }
-        }
+           steps {
+               script {
+                    def plan = readFile 'terraform/tfplan.txt'
+                    input message: "Do you want to apply the plan?",
+                    parameters: [text(name: 'Plan', description: 'Please review the plan', defaultValue: plan)]
+               }
+           }
+       }
 
-        stage('Output') {
+        stage('Apply') {
             steps {
-                script {
-                    // Display the EC2 instance public IP and S3 bucket name after creation
-                    sh 'terraform output'
-                }
-            }
-        }
-        
-        stage('Clean Up') {
-            steps {
-                echo 'Cleaning up resources...'
+                sh "pwd;cd terraform/ ; terraform apply -input=false tfplan"
             }
         }
     }
 
-    post {
-        always {
-            echo 'Pipeline finished.'
-        }
-    }
-}
+  }
+           
+          
 
