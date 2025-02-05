@@ -1,69 +1,44 @@
 pipeline {
     agent any
-
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        // Make sure the credentials ID matches the one you stored in Jenkins
+        AWS_CREDENTIALS_ID = 'aws-jenkins-creds'
     }
-
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
+                // Checkout your repository
                 checkout scm
             }
         }
-
-        stage('Terraform Init') {
+        
+        stage('Run Terraform') {
             steps {
-                script {
-                    sh 'terraform init'
-                }
-            }
-        }
-
-        stage('Terraform Plan') {
-            steps {
-                script {
-                    sh 'terraform plan -out=tfplan.txt'  // Plan saved to tfplan.txt
-                }
-            }
-        }
-
-        stage('Archive Plan') {
-            steps {
-                archiveArtifacts artifacts: 'tfplan.txt', allowEmptyArchive: true  // Correct file pattern here
-            }
-        }
-
-        stage('Approval') {
-            steps {
-                script {
-                    // Approval step to continue (can be manually approved in Jenkins)
-                    input message: 'Approve to apply changes?', ok: 'Approve'
-                }
-            }
-        }
-
-        stage('Terraform Apply') {
-            when {
-                expression {
-                    return fileExists('tfplan.txt')  // Ensure the plan file exists before applying
-                }
-            }
-            steps {
-                script {
-                    sh 'terraform apply tfplan.txt'
+                node {
+                    // Ensure AWS credentials are available for Terraform
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
+                        credentialsId: AWS_CREDENTIALS_ID
+                    ]]) {
+                        // Here you can run your Terraform commands to setup EC2, S3, VPC
+                        sh '''
+                            # Terraform initialization and apply
+                            terraform init
+                            terraform apply -auto-approve
+                        '''
+                    }
                 }
             }
         }
     }
-    
     post {
         always {
-            // Clean up if needed
-            cleanWs()
+            // Clean up workspace after pipeline runs, wrapped in a node block
+            node {
+                cleanWs()
+            }
         }
     }
 }
-
-
